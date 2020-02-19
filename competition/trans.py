@@ -6,20 +6,39 @@ import numpy as np
 from scipy import signal
 
 
+# Get Sensor observations
 def getObs(myfile, name):
+
+   # read the CSV file, parsing dates and dropping one useless collumn
    obs = pd.read_csv(myfile,
                      sep=',',
                      parse_dates=[0]).drop('date_received',1);
    
+   #Force numerical values in the collumn 'value'
    obs['value'] = obs['value'].apply(pd.to_numeric, errors='coerce')
+
+   #Remove duplicates (two measurements with the same time)
    obs2 = obs.drop_duplicates('timestamp', keep='last').set_index('timestamp')
+
+   #Read dates with specific format
    obs2.index = pd.to_datetime(obs2.index, format='%Y-%m-%dT%H:%M:%S.%fZ')
+
+   #Resample the values: every intermediate values will be averaged and place at the right time
    obs3 = obs2.resample('5min').mean()
+
+   #Filling missing values
    obs3['value'].interpolate('time', inplace=True, limit_direction='both')
+
+   #rounding all values to 2 decimal places
    obs4 = obs3.round({'value': 2})
   
+   #NEw collumn for "Irrigation" (on/off)
    iri = name + ' irrigation'
+
+   #Find the extremum of the humidity (when the humidity shoots up) => irrigation is on
    obs4[iri] = obs4.iloc[argrelextrema(obs4.value.values, np.less_equal, order=200)[0]]['value']
+
+   #replace "NaN" with 0 
    obs4[iri] = obs4[iri].fillna(0)
    obs4.loc[obs4[iri] != 0, iri] = 1
 
@@ -46,16 +65,15 @@ def getWeather(myfile, name):
 #obs1['obs1 min'] = obs1.iloc[argrelextrema(obs1.soil.values, np.less_equal, order=300)[0]]['Soil humidity 1']
 
 
-obs = [getObs('UGB-PILOTS_Sensor80-SH.csv', 'Plot 1'),
-       getObs('UGB-PILOTS_Sensor81-SH.csv', 'Plot 2'),
-       getObs('UGB-PILOTS_Sensor82-SH.csv', 'Plot 3'),
-       getObs('UGB-PILOTS_Sensor84-SH.csv', 'Plot 4'),
-       getWeather('TP.csv', 'Air temperature (C)'),
-       getWeather('HD.csv', 'Air humidity (%)'),
-       getWeather('PA.csv', 'Pressure (KPa)'),
-       getWeather('WS.csv', 'Wind speed (Km/h)'),
-       getWeather('WG.csv', 'Wind gust (Km/h)'),
-       getWeather('WD.csv', 'Wind direction (Deg)'),
+obs = [getObs('data/UGB-PILOTS_Sensor80-SH.csv', 'Plot 1'),
+       getObs('data/UGB-PILOTS_Sensor81-SH.csv', 'Plot 2'),
+       getObs('data/UGB-PILOTS_Sensor82-SH.csv', 'Plot 3'),
+       getObs('data/UGB-PILOTS_Sensor84-SH.csv', 'Plot 4'),
+       getWeather('data/TP.csv', 'Air temperature (C)'),
+       getWeather('data/PA.csv', 'Pressure (KPa)'),
+       getWeather('data/WS.csv', 'Wind speed (Km/h)'),
+       getWeather('data/WG.csv', 'Wind gust (Km/h)'),
+       getWeather('data/WD.csv', 'Wind direction (Deg)'),
        ]
 
 merged = reduce(lambda x, y: pd.merge(x, y, on = 'timestamp', how='outer'), obs)
