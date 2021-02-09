@@ -6,9 +6,8 @@ This reporitory contains the data collected and the winning algorithms for the c
 Usage
 -----
 
-The raw data collected from fields is in the folder 
-
-The winner algorithms and in the folder /competition.
+The raw data collected from fields is in the folder /competition.
+The winner algorithms and in the folder /winners.
 
 Copyright
 ---------
